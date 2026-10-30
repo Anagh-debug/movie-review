@@ -1,0 +1,191 @@
+{
+  "info": {
+    "name": "EventSpot - Movies & Reviews",
+    "description": "Add a movie, then review it.\n\nStart the API first:  mvn spring-boot:run\n\nEverything you change lives in Collection > Variables (Current value):\n  movieName      - the movie you want to add\n  eventId        - which movie you are reviewing (request 1 sets this automatically; change it to review an older movie)\n  rating         - 1 to 5\n  reviewerName   - who is writing the review\n  deleteEventId  - which movie request 6 deletes\n\nNormal order: 1 (add) -> 3 (review) -> 5 (rating).\nTo review a movie that already exists, run 2, copy the eventId you want into the variable, then run 3.\nTo delete one, run 2, copy its id into deleteEventId, then run 6. Deleting a movie also deletes its reviews.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "movieName", "value": "Jawan", "type": "string" },
+    { "key": "eventId", "value": "1", "type": "string" },
+    { "key": "rating", "value": "5", "type": "string" },
+    { "key": "reviewerName", "value": "Anagh Chaturvedi", "type": "string" },
+    { "key": "reviewId", "value": "1", "type": "string" },
+    { "key": "deleteEventId", "value": "0", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Add a movie",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/events",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "events"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"organizerId\": 1,\n  \"eventName\": \"{{movieName}}\",\n  \"eventType\": \"Movie\",\n  \"eventGenre\": \"Action\",\n  \"baseTicketPrice\": 250.00,\n  \"attendeeName\": \"Lead Performer\",\n  \"attendeeRole\": \"Lead Actor\",\n  \"venue\": \"PVR Phoenix\",\n  \"eventDate\": \"2026-12-01 19:00\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Set movieName in Collection > Variables, then send. The new movie's id is saved into eventId, so request 3 reviews this movie."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('movie added', () => pm.response.to.have.status(201));",
+              "const m = pm.response.json().body;",
+              "pm.collectionVariables.set('eventId', m.eventId);",
+              "console.log('ADDED: ' + m.eventName + '  ->  eventId ' + m.eventId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. All movies with their ids",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "events"]
+        },
+        "description": "Pick the eventId of the movie you want to review and put it in the eventId variable."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "pm.response.json().body.forEach(m => console.log(m.eventId + '  =  ' + m.eventName));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Review that movie",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{eventId}}/reviews",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "events", "{{eventId}}", "reviews"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reviewerName\": \"{{reviewerName}}\",\n  \"rating\": {{rating}},\n  \"reviewTitle\": \"My review\",\n  \"reviewText\": \"Worth watching.\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "description": "Reviews the movie in eventId with the rating in the rating variable (1-5). The new reviewId is saved."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('review added', () => pm.response.to.have.status(201));",
+              "const r = pm.response.json().body;",
+              "pm.collectionVariables.set('reviewId', r.reviewId);",
+              "pm.test('went to the right movie', () =>",
+              "    pm.expect(String(r.eventId)).to.eql(String(pm.collectionVariables.get('eventId'))));",
+              "console.log('REVIEW ' + r.reviewId + ' on ' + r.eventName + '  rating ' + r.rating);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Reviews of that movie",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{eventId}}/reviews",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "events", "{{eventId}}", "reviews"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "pm.response.json().body.forEach(r => console.log('review ' + r.reviewId + ': ' + r.rating + '/5 by ' + r.reviewerName));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Rating of that movie",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{eventId}}/reviews/summary",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "events", "{{eventId}}", "reviews", "summary"]
+        },
+        "description": "Number of reviews and the average rating for that movie."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "const s = pm.response.json().body;",
+              "console.log(s.eventName + ': ' + s.totalReviews + ' reviews, average ' + s.averageRating);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Delete a movie",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{deleteEventId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "events", "{{deleteEventId}}"]
+        },
+        "description": "Deletes the movie whose id is in deleteEventId, along with every review on it. Run request 2 first to find the id you want. The default is 0, so a full collection run deletes nothing - set it deliberately."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('deleted, or 404 if that id does not exist', () =>",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+              "const res = pm.response.json();",
+              "if (pm.response.code === 200) {",
+              "    console.log('DELETED: ' + res.body.eventName + ' (id ' + res.body.eventId +",
+              "                ') and ' + res.body.reviewsDeleted + ' review(s)');",
+              "} else {",
+              "    console.log('nothing deleted - set deleteEventId to a real movie id (run request 2)');",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
