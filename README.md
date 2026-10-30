@@ -5,12 +5,31 @@ Spring Boot 3.3.4 · Java 17 · Spring Data JPA / Hibernate · H2 (default) or P
 
 ## Run it
 
+You need **JDK 17 or newer** and **Maven**. Check both are on your PATH:
+
+```bash
+java -version
+mvn -version
+```
+
+If `mvn` is not recognised, install Maven before going further — on Windows the quickest
+way is `winget install Apache.Maven`, then open a new terminal so the PATH change applies.
+
 ```bash
 mvn spring-boot:run
 ```
 
+Once the project has been packaged, you can skip Maven and launch the jar directly:
+
+```bash
+java -jar target/eventspot-reviews-1.0.0.jar
+```
+
+Either way, wait for the `Started EventHostingApplication` line before sending requests —
+until it appears nothing is listening and every call fails with `Connection refused`.
+
 The API comes up on `http://localhost:8080`. The default profile uses an **in-memory H2**
-database, so nothing needs installing — but the data resets on every restart.
+database, so no database server is needed — but the data resets on every restart.
 
 `src/main/resources/data.sql` seeds one organizer and two events on each start:
 
@@ -28,6 +47,12 @@ user `sa`, no password).
 mvn spring-boot:run -Dspring-boot.run.profiles=postgres
 ```
 
+Or, from the packaged jar:
+
+```bash
+java -jar target/eventspot-reviews-1.0.0.jar --spring.profiles.active=postgres
+```
+
 Expects a database named `eventspot` on `localhost:5432`; override credentials with the
 `POSTGRES_USER` / `POSTGRES_PASSWORD` environment variables.
 
@@ -43,6 +68,37 @@ Movies (events):
 | GET    | `/api/events/{id}`                        | One movie                               | 200     |
 | DELETE | `/api/events/{id}`                        | Remove a movie **and all its reviews**  | 200     |
 | PUT    | `/api/admin/events/{id}/approval`         | Approve or reject a submission          | 200     |
+
+### Adding a movie
+
+`POST /api/events` requires seven fields — `organizerId`, `eventName`, `eventType`,
+`eventGenre`, `baseTicketPrice`, `attendeeName` and `attendeeRole`. `description`,
+`venue` and `eventDate` are optional. `organizerId` must be `1`, the only organizer
+the seed data creates.
+
+```bash
+curl -X POST http://localhost:8080/api/events \
+  -H "Content-Type: application/json" \
+  -d '{"organizerId":1,"eventName":"Jawan","eventType":"Movie","eventGenre":"Action",
+       "baseTicketPrice":300.00,"attendeeName":"Shah Rukh Khan","attendeeRole":"Lead Actor",
+       "venue":"PVR Phoenix, Pune","eventDate":"2026-12-20 18:00"}'
+```
+
+On Windows PowerShell that `curl` line will not work: `curl` is an alias for
+`Invoke-WebRequest`, and quoting JSON through `curl.exe` is unreliable in PowerShell 5.1.
+Use `Invoke-RestMethod` instead:
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:8080/api/events -Method Post -ContentType "application/json" -Body '{"organizerId":1,"eventName":"Jawan","eventType":"Movie","eventGenre":"Action","baseTicketPrice":300.00,"attendeeName":"Shah Rukh Khan","attendeeRole":"Lead Actor"}'
+```
+
+Leave a required field out and the response names every one that is missing:
+
+```json
+{ "errorCode": 400, "errorMsg": "Request validation failed",
+  "body": { "organizerId": "Organizer id is required",
+            "eventType": "Event type is required" } }
+```
 
 Reviews:
 
